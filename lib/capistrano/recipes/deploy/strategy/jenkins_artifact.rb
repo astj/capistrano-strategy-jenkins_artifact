@@ -11,14 +11,35 @@ class ::JenkinsApi::Client::Job
     res = @client.api_get_request("/job/#{path_encode(job_name)}/lastSuccessfulBuild")
     res['number']
   end
+
+  def find_artifact_with_path(job_name, relative_path)
+    current_build_number  = get_current_build_number(job_name)
+    job_path              = "job/#{path_encode job_name}/"
+    response_json         = @client.api_get_request("/#{job_path}#{current_build_number}")
+    if response_json['artifacts'].none? {|a| a['relativePath'] == relative_path }
+      logger.important "Specified artifact not found in curent_build !!"
+      abort
+    end
+    jenkins_path          = response_json['url']
+    artifact_path         = URI.escape("#{jenkins_path}artifact/#{relative_path}")
+    return artifact_path
+  end
 end
 
 class ::Capistrano::Deploy::Strategy::JenkinsArtifact < ::Capistrano::Deploy::Strategy::Base
   def deploy!
     jenkins_origin = fetch(:jenkins_origin) or abort ":jenkins_origin configuration must be defined"
+    artifact_relative_path = fetch(:artifact_relative_path)
     client = JenkinsApi::Client.new(server_url: jenkins_origin.to_s)
     set(:artifact_url) do
-      uri = client.job.find_artifact(fetch(:build_project)) or abort "No artifact found for #{fetch(:build_project)}"
+      uri = do
+        if artifact_relative_path
+          client.job.find_artifact(fetch(:build_project))
+        else
+          client.job.find_artifact_with_path(fetch(:build_project), artifact_relative_path)
+        end
+      end
+      abort "No artifact found for #{fetch(:build_project)}" unless uri
       URI.parse(uri).tap {|uri|
         uri.scheme = jenkins_origin.scheme
         uri.host = jenkins_origin.host
