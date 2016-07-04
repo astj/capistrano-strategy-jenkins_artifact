@@ -32,14 +32,13 @@ class ::Capistrano::Deploy::Strategy::JenkinsArtifact < ::Capistrano::Deploy::St
     artifact_relative_path = fetch(:artifact_relative_path)
     client = JenkinsApi::Client.new(server_url: jenkins_origin.to_s)
     set(:artifact_url) do
-      uri = do
-        if artifact_relative_path
-          client.job.find_artifact(fetch(:build_project))
-        else
-          client.job.find_artifact_with_path(fetch(:build_project), artifact_relative_path)
-        end
+      uri = ''
+      if artifact_relative_path
+        uri = client.job.find_artifact(fetch(:build_project))
+      else
+        uri = client.job.find_artifact_with_path(fetch(:build_project), artifact_relative_path)
       end
-      abort "No artifact found for #{fetch(:build_project)}" unless uri
+      abort "No artifact found for #{fetch(:build_project)}" if uri.empty?
       URI.parse(uri).tap {|uri|
         uri.scheme = jenkins_origin.scheme
         uri.host = jenkins_origin.host
