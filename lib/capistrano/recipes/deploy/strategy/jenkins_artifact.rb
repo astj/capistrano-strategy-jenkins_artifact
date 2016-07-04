@@ -34,9 +34,9 @@ class ::Capistrano::Deploy::Strategy::JenkinsArtifact < ::Capistrano::Deploy::St
     set(:artifact_url) do
       uri = ''
       if artifact_relative_path
-        uri = client.job.find_artifact(fetch(:build_project))
-      else
         uri = client.job.find_artifact_with_path(fetch(:build_project), artifact_relative_path)
+      else
+        uri = client.job.find_artifact(fetch(:build_project))
       end
       abort "No artifact found for #{fetch(:build_project)}" if uri.empty?
       URI.parse(uri).tap {|uri|
